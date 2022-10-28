@@ -5,22 +5,40 @@ import axios from 'axios';
 
 const {Search} = Input;
 
-export const Github: React.FC = () => {
+const it_kamasutra = 'it-kamasutra'
+
+export const Github: React.FC = (props) => {
+
+    const [searchTerm, setSearchTerm] = useState(it_kamasutra);
     const [selectedUser, setSelectedUser] = useState<SearchUserType | null>(null);
-    const [users, setUsers] = useState<SearchUserType[]>([]);
+
+    useEffect(() => {
+        console.log('sing tab title')
+        if (selectedUser) {
+            document.title = selectedUser.login
+        }
+    }, [selectedUser])
 
     return <>
         <div style={{padding: '20px'}}>
             <div style={{display: 'flex', gap: '50px'}}>
-                <SearchComp setUsers={setUsers}/>
+                <div>
+                    <SearchComp values={searchTerm} onSubmit={(value: string) => {
+                        setSearchTerm(value)
+                    }}/>
+                    <br/>
+                    <Button onClick={() => setSearchTerm(it_kamasutra)}>Reset</Button>
+                    <br/>
+                    <UsersList term={searchTerm} selectedUser={selectedUser} onUserSelectCB={setSelectedUser}/>
+                </div>
                 <div>
                     <h2>UserName</h2>
-                    <Details selectedUser={selectedUser}/>
+                    <Details user={selectedUser}/>
                 </div>
             </div>
-            <div>
-               <Users users={users} selectedUser={selectedUser} setSelectedUser={setSelectedUser}/>
-            </div>
+
+            <br/>
+
         </div>
 
 
@@ -28,22 +46,13 @@ export const Github: React.FC = () => {
 };
 
 
+export const SearchComp: React.FC<SearchCompType> = ({values, onSubmit}) => {
 
-
-export const SearchComp: React.FC<SearchCompType> = (props) => {
-
-    const [tempSearch, setTempSearch] = useState('it-kamasutra');
-    const [searchTerm, setSearchTerm] = useState('it-kamasutra');
+    const [tempSearch, setTempSearch] = useState('');
 
     useEffect(() => {
-        console.log('sing users')
-        axios
-            .get<SearchResultType>(`https://api.github.com/search/users?q=${searchTerm}`)
-            .then(res => {
-                props.setUsers(res.data.items)
-            })
-    }, [searchTerm])
-
+        setTempSearch(values)
+    }, [values])
 
     return (
         <div>
@@ -56,42 +65,45 @@ export const SearchComp: React.FC<SearchCompType> = (props) => {
                         //enterButton
                     />
                 </Space>
-                <Button
-                    onClick={() => {
-                        setSearchTerm(tempSearch)
-                    }}>
-                    FIND</Button>
+                <Button onClick={() => {
+                    onSubmit(tempSearch)
+                }}>FIND</Button>
                 <div>
+                    <div>
 
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
-type SearchCompType ={
-    setUsers: any
+type SearchCompType = {
+    values: string
+    onSubmit: (el: any) => void
 }
 type SearchResultType = {
     items: SearchUserType[]
 }
 
-
-
-export const Users: React.FC<AllUsersType> = ({selectedUser, setSelectedUser, users}) => {
+export const UsersList: React.FC<UsersListType> = ({onUserSelectCB, selectedUser, term}) => {
+    const [users, setUsers] = useState<SearchUserType[]>([]);
 
     useEffect(() => {
-        console.log('sing tab title')
-        if (selectedUser) {
-            document.title = selectedUser.login
-        }
-    }, [selectedUser])
+        console.log('sing users')
+        axios
+            .get<SearchResultType>(`https://api.github.com/search/users?q=${term}`)
+            .then(res => {
+                setUsers(res.data.items)
+            })
+    }, [term])
 
     const user = users.map(u => <ul key={u.id}>
         <li style={selectedUser === u
             ? {color: 'red'}
             : {color: 'black'}} onClick={() => {
-            setSelectedUser(u);
-        }}>{u.login}</li>
+            onUserSelectCB(u);
+        }}>{u.login}
+        </li>
     </ul>)
 
     return (
@@ -100,28 +112,27 @@ export const Users: React.FC<AllUsersType> = ({selectedUser, setSelectedUser, us
         </div>
     );
 };
-type AllUsersType = {
-    users: SearchUserType[]
-    selectedUser: any
-    setSelectedUser: any
+type UsersListType = {
+    term: string
+    selectedUser: SearchUserType | null
+    onUserSelectCB: (user: SearchUserType) => void
 }
 
 
-export const Details: React.FC<DetailsProps> = (props) => {
-
+export const Details: React.FC<DetailsProps> = ({user}) => {
     const [userDetails, setUserDetails] = useState<UserType | null>(null);
 
     useEffect(() => {
         console.log('add user details')
 
-        if (!!props.selectedUser) {
+        if (!!user) {
             axios
-                .get<UserType>(`https://api.github.com/users/${props.selectedUser.login}`)
+                .get<UserType>(`https://api.github.com/users/${user.login}`)
                 .then(res => {
                     setUserDetails(res.data)
                 })
         }
-    }, [props.selectedUser])
+    }, [user])
 
 
     return (
@@ -144,14 +155,15 @@ export const Details: React.FC<DetailsProps> = (props) => {
     );
 };
 type DetailsProps = {
-    selectedUser: any
+    user: SearchUserType | null
 }
-
 
 type SearchUserType = {
     login: string
     id: number
 }
+
+
 type UserType = {
     id: number
     login: string
